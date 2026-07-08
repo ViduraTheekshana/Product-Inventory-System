@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Our own application code logs at DEBUG for now - useful while
+         building/debugging. Turn down to INFO before anything resembling
+         production, to avoid noisy logs. -->
+    <logger name="com.millenniumitesp.productinventoryservice" level="DEBUG"/>
+
+    <!-- Hibernate's own internals stay at INFO - we don't need its
+         internal chatter, only our own app's logs at DEBUG. -->
+    <logger name="org.hibernate" level="INFO"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>
