@@ -69,6 +69,7 @@ public class ProductService {
         return ProductResponse.fromEntity(saved);
     }
 
+    //No need to call save setters automatically detect (Dirty checking).
     //update price and stock
     @Transactional
     public ProductResponse updatePriceAndStock(Long id, UpdateStockPriceRequest request) {
