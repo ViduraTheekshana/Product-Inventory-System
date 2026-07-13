@@ -5,6 +5,9 @@ import com.millenniumitesp.productinventoryservice.dto.ProductResponse;
 import com.millenniumitesp.productinventoryservice.dto.UpdateStockPriceRequest;
 import com.millenniumitesp.productinventoryservice.service.ProductService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +27,15 @@ public class ProductController {
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProduct(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getById(id));
+    }
+
+    // 5. Get All Products (paginated)
+    @GetMapping
+    public ResponseEntity<Page<ProductResponse>> getAllProducts(
+            @PageableDefault(size = 20, sort = "id") Pageable pageable
+    ) {
+        Page<ProductResponse> products = productService.getAll(pageable);
+        return ResponseEntity.ok(products);
     }
 
     // 2. Create Product

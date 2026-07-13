@@ -13,6 +13,9 @@ import com.millenniumitesp.productinventoryservice.repository.ProductArchiveRepo
 import com.millenniumitesp.productinventoryservice.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 public class ProductService {
@@ -20,6 +23,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ProductArchiveRepository productArchiveRepository;
     private final StockLimitsProperties stockLimits;
+    private static final int MAX_PAGE_SIZE = 100;
 
     public ProductService(ProductRepository productRepository,
                           ProductArchiveRepository productArchiveRepository,
@@ -29,14 +33,25 @@ public class ProductService {
         this.stockLimits = stockLimits;
     }
 
-    @Transactional(readOnly = true)//hibernate skip the tracking whether entity change
+    //retrieve 1 record
+    //hibernate skip the tracking whether entity change
     public ProductResponse getById(Long id) {
         return productRepository.findById(id)
                 .map(ProductResponse::fromEntity)
                 .orElseThrow(() -> new ProductNotFoundException(id));
     }
 
-    @Transactional
+    //get pageable records
+    public Page<ProductResponse> getAll(Pageable pageable) {
+        Pageable safePageable = pageable.getPageSize() > MAX_PAGE_SIZE
+                ? PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort())
+                : pageable;
+
+        return productRepository.findAll(safePageable)
+                .map(ProductResponse::fromEntity);
+    }
+
+    //create a new record
     public ProductResponse create(CreateProductRequest request) {
         if (productRepository.existsBySku(request.sku())) {
             throw new DuplicateSkuException(request.sku());
@@ -54,6 +69,7 @@ public class ProductService {
         return ProductResponse.fromEntity(saved);
     }
 
+    //update price and stock
     @Transactional
     public ProductResponse updatePriceAndStock(Long id, UpdateStockPriceRequest request) {
         Product product = findProductOrThrow(id);
@@ -68,6 +84,7 @@ public class ProductService {
         return ProductResponse.fromEntity(product);
     }
 
+    //delete and move to the archive product
     @Transactional
     public void delete(Long id) {
         Product product = findProductOrThrow(id);
