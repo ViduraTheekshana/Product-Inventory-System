@@ -9,6 +9,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "products_archive")
@@ -52,7 +53,7 @@ public class ProductArchive {
                 .stockQuantity(product.getStockQuantity())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
-                .deletedAt(OffsetDateTime.now())
+                .deletedAt(OffsetDateTime.now(ZoneOffset.UTC))
                 .build();
     }
 }

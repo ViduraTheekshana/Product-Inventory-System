@@ -9,6 +9,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "products")
@@ -47,13 +48,15 @@ public class Product {
 
     @PrePersist
     void onCreate() {
-        OffsetDateTime now = OffsetDateTime.now();
+        // Always UTC explicitly - never rely on the JVM/container's default
+        // timezone, which can differ across machines and environments.
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         this.createdAt = now;
         this.updatedAt = now;
     }
 
     @PreUpdate
     void onUpdate() {
-        this.updatedAt = OffsetDateTime.now();
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 }
