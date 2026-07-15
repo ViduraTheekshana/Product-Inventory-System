@@ -6,9 +6,7 @@ import com.millenniumitesp.productinventoryservice.dto.ProductResponse;
 import com.millenniumitesp.productinventoryservice.dto.UpdateStockPriceRequest;
 import com.millenniumitesp.productinventoryservice.entity.Product;
 import com.millenniumitesp.productinventoryservice.entity.ProductArchive;
-import com.millenniumitesp.productinventoryservice.exception.DuplicateSkuException;
-import com.millenniumitesp.productinventoryservice.exception.ProductNotFoundException;
-import com.millenniumitesp.productinventoryservice.exception.StockLimitExceededException;
+import com.millenniumitesp.productinventoryservice.exception.ProductExceptions;
 import com.millenniumitesp.productinventoryservice.repository.ProductArchiveRepository;
 import com.millenniumitesp.productinventoryservice.repository.ProductRepository;
 import org.springframework.stereotype.Service;
@@ -38,7 +36,7 @@ public class ProductService {
     public ProductResponse getById(Long id) {
         return productRepository.findById(id)
                 .map(ProductResponse::fromEntity)
-                .orElseThrow(() -> new ProductNotFoundException(id));
+                .orElseThrow(() -> new ProductExceptions.NotFound(id));
     }
 
     //get pageable records
@@ -54,7 +52,7 @@ public class ProductService {
     //create a new record
     public ProductResponse create(CreateProductRequest request) {
         if (productRepository.existsBySku(request.sku())) {
-            throw new DuplicateSkuException(request.sku());
+            throw new ProductExceptions.DuplicateSku(request.sku());
         }
         validateStockWithinLimits(request.stockQuantity());
 
@@ -95,14 +93,14 @@ public class ProductService {
 
     private Product findProductOrThrow(Long id) {
         return productRepository.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException(id));
+                .orElseThrow(() -> new ProductExceptions.NotFound(id));
     }
 
     private void validateStockWithinLimits(int stockQuantity) {
         int min = stockLimits.getMinLimit();
         int max = stockLimits.getMaxLimit();
         if (stockQuantity < min || stockQuantity > max) {
-            throw new StockLimitExceededException(stockQuantity, min, max);
+            throw new ProductExceptions.StockLimitExceeded(stockQuantity, min, max);
         }
     }
 }

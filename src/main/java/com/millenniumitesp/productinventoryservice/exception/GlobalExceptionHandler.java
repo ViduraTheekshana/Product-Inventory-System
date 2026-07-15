@@ -1,83 +1,117 @@
 package com.millenniumitesp.productinventoryservice.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.validation.FieldError;
+import java.util.LinkedHashMap;
+import java.util.Objects;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-import java.util.List;
-
+/**
+ * Extends ResponseEntityExceptionHandler and returns ProblemDetail (RFC 7807)
+ * - Spring's current, built-in standard for structured error responses.
+ * Only title, status, and detail are returned to the client; no timestamp
+ * or request path, since those aid server-side debugging, not the caller.
+ */
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+@Slf4j
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    @Override
+    protected @Nullable ResponseEntity<Object> handleMethodArgumentNotValid(
+            @NonNull MethodArgumentNotValidException ex,
+            @NonNull HttpHeaders headers,
+            @NonNull HttpStatusCode status,
+            @NonNull WebRequest request) {
 
-    @ExceptionHandler(ProductNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(ProductNotFoundException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                ErrorResponse.of(404, "Not Found", ex.getMessage(), request.getRequestURI())
-        );
+        Map<String, String> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
+                .collect(Collectors.toMap(
+                        FieldError::getField,
+                        fe -> Objects.requireNonNullElse(fe.getDefaultMessage(), "Invalid value"),
+                        (existing, replacement) -> existing,
+                        LinkedHashMap::new));
+
+        log.warn("Validation failed: {}", fieldErrors);
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "One or more fields are invalid.");
+        problem.setTitle("Validation Failed");
+        problem.setProperty("errors", fieldErrors);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
     }
 
-    @ExceptionHandler(DuplicateSkuException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicateSku(DuplicateSkuException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                ErrorResponse.of(409, "Conflict", ex.getMessage(), request.getRequestURI())
-        );
+    @ExceptionHandler(ProductExceptions.NotFound.class)
+    public ProblemDetail handleNotFound(ProductExceptions.NotFound ex) {
+        log.warn(ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Product Not Found");
+        return problem;
     }
 
-    @ExceptionHandler(StockLimitExceededException.class)
-    public ResponseEntity<ErrorResponse> handleStockLimit(StockLimitExceededException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                ErrorResponse.of(400, "Bad Request", ex.getMessage(), request.getRequestURI())
-        );
+    @ExceptionHandler(ProductExceptions.DuplicateSku.class)
+    public ProblemDetail handleDuplicateSku(ProductExceptions.DuplicateSku ex) {
+        log.warn(ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Duplicate SKU");
+        return problem;
     }
 
-    // Fired automatically by @Valid when a request payload fails validation
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        List<ErrorResponse.FieldError> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> new ErrorResponse.FieldError(fe.getField(), fe.getDefaultMessage()))
-                .toList();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                ErrorResponse.ofValidation(400, "Bad Request", "Validation failed for one or more fields",
-                        request.getRequestURI(), fieldErrors)
-        );
+    @ExceptionHandler(ProductExceptions.StockLimitExceeded.class)
+    public ProblemDetail handleStockLimit(ProductExceptions.StockLimitExceeded ex) {
+        log.warn(ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle("Stock Limit Exceeded");
+        return problem;
     }
 
-    // Two concurrent updates to the same product (the @Version field) -
-    // second one lands here as 409, an expected outcome, not a bug.
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
-    public ResponseEntity<ErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                ErrorResponse.of(409, "Conflict", "This product was updated by someone else at the same time. Please retry.", request.getRequestURI())
-        );
+    public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        log.warn("Optimistic locking conflict: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, "This product was updated by someone else at the same time. Please retry.");
+        problem.setTitle("Concurrent Update Conflict");
+        return problem;
     }
 
-    // Catch-all - guarantees no raw stack trace ever reaches a client
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
+        log.warn("Data integrity violation on {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, "This request conflicts with existing data.");
+        problem.setTitle("Data Conflict");
+        return problem;
+    }
+
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ProblemDetail handleConstraintViolation(jakarta.validation.ConstraintViolationException ex) {
+        log.warn("Constraint violation: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle("Invalid Request");
+        return problem;
+    }
+
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
-
+    public ProblemDetail handleGeneric(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                ErrorResponse.of(500, "Internal Server Error", "An unexpected error occurred", request.getRequestURI())
-        );
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred.");
+        problem.setTitle("Internal Server Error");
+        return problem;
     }
-
-
-    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ErrorResponse> handleMethodNotAllowed(
-            org.springframework.web.HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(
-                ErrorResponse.of(405, "Method Not Allowed", ex.getMessage(), request.getRequestURI())
-        );
-    }
-
 }

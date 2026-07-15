@@ -17,10 +17,14 @@ public record ProductResponse(
         OffsetDateTime updatedAt
 ) {
     public static ProductResponse fromEntity(Product product) {
-        return new ProductResponse(
-                product.getId(), product.getName(), product.getSku(),
-                product.getPrice(), product.getStockQuantity(),
-                product.getCreatedAt(), product.getUpdatedAt()
-        );
+        return ProductResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .sku(product.getSku())
+                .price(product.getPrice())
+                .stockQuantity(product.getStockQuantity())
+                .createdAt(product.getCreatedAt())
+                .updatedAt(product.getUpdatedAt())
+                .build();
     }
 }
