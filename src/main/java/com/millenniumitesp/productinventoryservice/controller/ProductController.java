@@ -2,6 +2,7 @@ package com.millenniumitesp.productinventoryservice.controller;
 
 import com.millenniumitesp.productinventoryservice.dto.CreateProductRequest;
 import com.millenniumitesp.productinventoryservice.dto.ProductResponse;
+import com.millenniumitesp.productinventoryservice.dto.UpdateProductStatusRequest;
 import com.millenniumitesp.productinventoryservice.dto.UpdateStockPriceRequest;
 import com.millenniumitesp.productinventoryservice.service.ProductService;
 import org.springframework.data.domain.Page;
@@ -59,6 +60,16 @@ public class ProductController implements ProductApi {
             @RequestBody UpdateStockPriceRequest request
     ) {
         ProductResponse product = productService.updatePriceAndStock(id, request);
+        return ResponseEntity.ok(product);
+    }
+
+    @Override
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ProductResponse> updateStatus(
+            @PathVariable Long id,
+            @RequestBody UpdateProductStatusRequest request
+    ) {
+        ProductResponse product = productService.updateStatus(id, request.status());
         return ResponseEntity.ok(product);
     }
 

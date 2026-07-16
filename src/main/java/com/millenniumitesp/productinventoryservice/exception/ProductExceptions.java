@@ -28,4 +28,10 @@ public class ProductExceptions {
             super("stockQuantity " + requested + " is outside the allowed range [" + min + ", " + max + "]");
         }
     }
+
+    public static class InvalidStatusTransition extends RuntimeException {
+        public InvalidStatusTransition(String message) {
+            super(message);
+        }
+    }
 }

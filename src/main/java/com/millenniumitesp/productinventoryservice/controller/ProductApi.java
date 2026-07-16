@@ -2,6 +2,7 @@ package com.millenniumitesp.productinventoryservice.controller;
 
 import com.millenniumitesp.productinventoryservice.dto.CreateProductRequest;
 import com.millenniumitesp.productinventoryservice.dto.ProductResponse;
+import com.millenniumitesp.productinventoryservice.dto.UpdateProductStatusRequest;
 import com.millenniumitesp.productinventoryservice.dto.UpdateStockPriceRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -68,8 +69,24 @@ public interface ProductApi {
             @Valid @RequestBody UpdateStockPriceRequest request
     );
 
+    @Operation(summary = "Update product status to ACTIVE or INACTIVE",
+            description = "Sets a product's status. DELETED cannot be set here - use the DELETE endpoint instead.")
+    @ApiResponse(responseCode = "200", description = "Status updated successfully",
+            content = @Content(schema = @Schema(implementation = ProductResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Validation failed, or attempted to set status to DELETED",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "404", description = "No product exists with the given id",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "409", description = "Product was concurrently modified by another request",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    ResponseEntity<ProductResponse> updateStatus(
+            @Parameter(description = "The product's unique id", example = "1")
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody UpdateProductStatusRequest request
+    );
+
     @Operation(summary = "Delete a product",
-            description = "Archives then removes the product. Not a permanent, destructive delete.")
+            description = "Soft-deletes the product by setting its status to DELETED. The row is preserved, not permanently removed.")
     @ApiResponse(responseCode = "204", description = "Product deleted (archived) successfully")
     @ApiResponse(responseCode = "400", description = "id was not a positive number",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))

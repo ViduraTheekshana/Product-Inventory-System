@@ -1,6 +1,7 @@
 package com.millenniumitesp.productinventoryservice.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -11,27 +12,24 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-import org.springframework.validation.FieldError;
+
 import java.util.LinkedHashMap;
-import java.util.Objects;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
-/**
- * Extends ResponseEntityExceptionHandler and returns ProblemDetail (RFC 7807)
- * - Spring's current, built-in standard for structured error responses.
- * Only title, status, and detail are returned to the client; no timestamp
- * or request path, since those aid server-side debugging, not the caller.
- */
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
+    // Stays separate: overrides a specific parent method with its own
+    // required signature, not a freeform @ExceptionHandler.
     @Override
     protected @Nullable ResponseEntity<Object> handleMethodArgumentNotValid(
             @NonNull MethodArgumentNotValidException ex,
@@ -56,62 +54,55 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
     }
 
-    @ExceptionHandler(ProductExceptions.NotFound.class)
-    public ProblemDetail handleNotFound(ProductExceptions.NotFound ex) {
-        log.warn(ex.getMessage());
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
-        problem.setTitle("Product Not Found");
-        return problem;
-    }
-
-    @ExceptionHandler(ProductExceptions.DuplicateSku.class)
-    public ProblemDetail handleDuplicateSku(ProductExceptions.DuplicateSku ex) {
-        log.warn(ex.getMessage());
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
-        problem.setTitle("Duplicate SKU");
-        return problem;
-    }
-
-    @ExceptionHandler(ProductExceptions.StockLimitExceeded.class)
-    public ProblemDetail handleStockLimit(ProductExceptions.StockLimitExceeded ex) {
-        log.warn(ex.getMessage());
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
-        problem.setTitle("Stock Limit Exceeded");
-        return problem;
-    }
-
-    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
-    public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
-        log.warn("Optimistic locking conflict: {}", ex.getMessage());
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.CONFLICT, "This product was updated by someone else at the same time. Please retry.");
-        problem.setTitle("Concurrent Update Conflict");
-        return problem;
-    }
-
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
-        log.warn("Data integrity violation on {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.CONFLICT, "This request conflicts with existing data.");
-        problem.setTitle("Data Conflict");
-        return problem;
-    }
-
-    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
-    public ProblemDetail handleConstraintViolation(jakarta.validation.ConstraintViolationException ex) {
-        log.warn("Constraint violation: {}", ex.getMessage());
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
-        problem.setTitle("Invalid Request");
-        return problem;
-    }
-
+    /**
+     * Every other exception type funnels through this single method.
+     * Pattern-matching switch (Java 21+) dispatches on the exception's
+     * runtime type - equivalent to a chain of instanceof checks, but
+     * exhaustive, type-safe, and far less repetitive than one
+     * @ExceptionHandler method per exception type.
+     */
     @ExceptionHandler(Exception.class)
-    public ProblemDetail handleGeneric(Exception ex, HttpServletRequest request) {
-        log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred.");
-        problem.setTitle("Internal Server Error");
+    public ProblemDetail handleException(Exception ex, HttpServletRequest request) {
+        return switch (ex) {
+            case ProductExceptions.NotFound e -> {
+                log.warn(e.getMessage());
+                yield buildProblem(HttpStatus.NOT_FOUND, "Product Not Found", e.getMessage());
+            }
+            case ProductExceptions.DuplicateSku e -> {
+                log.warn(e.getMessage());
+                yield buildProblem(HttpStatus.CONFLICT, "Duplicate SKU", e.getMessage());
+            }
+            case ProductExceptions.StockLimitExceeded e -> {
+                log.warn(e.getMessage());
+                yield buildProblem(HttpStatus.BAD_REQUEST, "Stock Limit Exceeded", e.getMessage());
+            }
+            case ProductExceptions.InvalidStatusTransition e -> {
+                log.warn(e.getMessage());
+                yield buildProblem(HttpStatus.BAD_REQUEST, "Invalid Status Transition", e.getMessage());
+            }
+            case ObjectOptimisticLockingFailureException e -> {
+                log.warn("Optimistic locking conflict: {}", e.getMessage());
+                yield buildProblem(HttpStatus.CONFLICT, "Concurrent Update Conflict",
+                        "This product was updated by someone else at the same time. Please retry.");
+            }
+            case DataIntegrityViolationException e -> {
+                log.warn("Data integrity violation on {} {}: {}", request.getMethod(), request.getRequestURI(), e.getMessage());
+                yield buildProblem(HttpStatus.CONFLICT, "Data Conflict", "This request conflicts with existing data.");
+            }
+            case ConstraintViolationException e -> {
+                log.warn("Constraint violation: {}", e.getMessage());
+                yield buildProblem(HttpStatus.BAD_REQUEST, "Invalid Request", e.getMessage());
+            }
+            default -> {
+                log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
+                yield buildProblem(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected error occurred.");
+            }
+        };
+    }
+
+    private ProblemDetail buildProblem(HttpStatus status, String title, String detail) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+        problem.setTitle(title);
         return problem;
     }
 }

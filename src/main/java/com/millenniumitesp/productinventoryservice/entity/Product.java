@@ -1,5 +1,6 @@
 package com.millenniumitesp.productinventoryservice.entity;
 
+import com.millenniumitesp.productinventoryservice.enums.ProductStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,7 +13,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
 @Entity
-@Table(name = "products")
+@Table(
+        name = "products",
+        indexes = @Index(name = "idx_products_status", columnList = "status")
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,7 +31,7 @@ public class Product {
     @Column(nullable = false, length = 200)
     private String name;
 
-    @Column(nullable = false, unique = true, length = 64)
+    @Column(nullable = false, length = 64)
     private String sku;
 
     @Column(nullable = false, precision = 12, scale = 2)
@@ -36,9 +40,15 @@ public class Product {
     @Column(name = "stock_quantity", nullable = false)
     private Integer stockQuantity;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ProductStatus status;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
+    // Doubles as "deletedAt" once status == DELETED, since deleted rows
+    // are never modified again - no separate deletedAt column needed.
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
@@ -53,6 +63,11 @@ public class Product {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         this.createdAt = now;
         this.updatedAt = now;
+
+        if (this.status == null) {
+            this.status = ProductStatus.ACTIVE;
+        }
+
     }
 
     @PreUpdate

@@ -5,53 +5,56 @@ import com.millenniumitesp.productinventoryservice.dto.CreateProductRequest;
 import com.millenniumitesp.productinventoryservice.dto.ProductResponse;
 import com.millenniumitesp.productinventoryservice.dto.UpdateStockPriceRequest;
 import com.millenniumitesp.productinventoryservice.entity.Product;
-import com.millenniumitesp.productinventoryservice.entity.ProductArchive;
+import com.millenniumitesp.productinventoryservice.enums.ProductStatus;
 import com.millenniumitesp.productinventoryservice.exception.ProductExceptions;
-import com.millenniumitesp.productinventoryservice.repository.ProductArchiveRepository;
 import com.millenniumitesp.productinventoryservice.repository.ProductRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProductService {
 
-    private final ProductRepository productRepository;
-    private final ProductArchiveRepository productArchiveRepository;
-    private final StockLimitsProperties stockLimits;
     private static final int MAX_PAGE_SIZE = 100;
 
-    public ProductService(ProductRepository productRepository,
-                          ProductArchiveRepository productArchiveRepository,
-                          StockLimitsProperties stockLimits) {
+    private final ProductRepository productRepository;
+    private final StockLimitsProperties stockLimits;
+
+    public ProductService(ProductRepository productRepository, StockLimitsProperties stockLimits) {
         this.productRepository = productRepository;
-        this.productArchiveRepository = productArchiveRepository;
         this.stockLimits = stockLimits;
     }
 
-    //retrieve 1 record
-    //hibernate skip the tracking whether entity change
+    /**
+     * retrieve 1 record
+     */
+    @Transactional(readOnly = true)
     public ProductResponse getById(Long id) {
-        return productRepository.findById(id)
+        return productRepository.findByIdAndStatusNot(id, ProductStatus.DELETED)
                 .map(ProductResponse::fromEntity)
                 .orElseThrow(() -> new ProductExceptions.NotFound(id));
     }
 
-    //get pageable records
+    /**
+     * get pageable records
+     */
     public Page<ProductResponse> getAll(Pageable pageable) {
         Pageable safePageable = pageable.getPageSize() > MAX_PAGE_SIZE
                 ? PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort())
                 : pageable;
 
-        return productRepository.findAll(safePageable)
+        return productRepository.findAllByStatusNot(ProductStatus.DELETED, safePageable)
                 .map(ProductResponse::fromEntity);
     }
 
-    //create a new record
+    /**
+     * create a new record
+     */
+    @Transactional
     public ProductResponse create(CreateProductRequest request) {
-        if (productRepository.existsBySku(request.sku())) {
+        if (productRepository.existsBySkuAndStatusNot(request.sku(), ProductStatus.DELETED)) {
             throw new ProductExceptions.DuplicateSku(request.sku());
         }
         validateStockWithinLimits(request.stockQuantity());
@@ -61,17 +64,17 @@ public class ProductService {
                 .sku(request.sku())
                 .price(request.price())
                 .stockQuantity(request.stockQuantity())
+                .status(ProductStatus.ACTIVE)
                 .build();
 
         Product saved = productRepository.save(product);
         return ProductResponse.fromEntity(saved);
     }
 
-    //No need to call save setters automatically detect (Dirty checking).
     //update price and stock
     @Transactional
     public ProductResponse updatePriceAndStock(Long id, UpdateStockPriceRequest request) {
-        Product product = findProductOrThrow(id);
+        Product product = findActiveOrThrow(id);
 
         if (request.price() != null) {
             product.setPrice(request.price());
@@ -83,16 +86,32 @@ public class ProductService {
         return ProductResponse.fromEntity(product);
     }
 
-    //delete and move to the archive product
+    /**
+     * update status only
+     */
     @Transactional
-    public void delete(Long id) {
-        Product product = findProductOrThrow(id);
-        productArchiveRepository.save(ProductArchive.fromProduct(product));
-        productRepository.delete(product);
+    public ProductResponse updateStatus(Long id, ProductStatus newStatus) {
+        if (newStatus == ProductStatus.DELETED) {
+            throw new ProductExceptions.InvalidStatusTransition(
+                    "Use the DELETE endpoint to remove a product, not this one.");
+        }
+
+        Product product = findActiveOrThrow(id);
+        product.setStatus(newStatus);
+        return ProductResponse.fromEntity(product);
     }
 
-    private Product findProductOrThrow(Long id) {
-        return productRepository.findById(id)
+    /**
+     Delete Record by setting status to DELETED (Soft Delete)
+     */
+    @Transactional
+    public void delete(Long id) {
+        Product product = findActiveOrThrow(id);
+        product.setStatus(ProductStatus.DELETED);
+    }
+
+    private Product findActiveOrThrow(Long id) {
+        return productRepository.findByIdAndStatusNot(id, ProductStatus.DELETED)
                 .orElseThrow(() -> new ProductExceptions.NotFound(id));
     }
 
