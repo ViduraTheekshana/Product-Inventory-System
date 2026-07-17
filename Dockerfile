@@ -8,6 +8,9 @@ RUN mvn clean package -DskipTests -B
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 RUN addgroup -S spring && adduser -S spring -G spring
+
+RUN mkdir -p /app/logs && chown -R spring:spring /app/logs
+
 USER spring
 COPY --from=builder /build/target/*.jar app.jar
 EXPOSE 8080
