@@ -1,0 +1,13 @@
+inventory:
+  stock:
+    max-limit: 100000  # generous, since dev is just testing, not real limits
+  pagination:
+    default-size: 5
+
+logging:
+  level:
+    com.millenniumitesp.productinventoryservice: DEBUG
+    org.hibernate.SQL: DEBUG  # see every SQL query while developing
+
+server:
+  port: 8080

@@ -33,3 +33,7 @@ build/
 .vscode/
 #env file added
 .env
+.env.prod
+.env.dev
+.env.qa
+

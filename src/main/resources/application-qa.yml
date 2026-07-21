@@ -1,0 +1,13 @@
+inventory:
+  stock:
+    max-limit: 5000  # QA might specifically test near-realistic limits
+  pagination:
+    default-size: 20
+
+logging:
+  level:
+    com.millenniumitesp.productinventoryservice: INFO
+    org.hibernate.SQL: WARN  # quieter, QA doesn't need to see every query
+
+server:
+  port: 8080

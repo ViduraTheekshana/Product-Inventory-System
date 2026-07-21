@@ -1,13 +1,14 @@
 package com.millenniumitesp.productinventoryservice.controller;
 
+import com.millenniumitesp.productinventoryservice.config.PaginationProperties;
 import com.millenniumitesp.productinventoryservice.dto.CreateProductRequest;
 import com.millenniumitesp.productinventoryservice.dto.ProductResponse;
 import com.millenniumitesp.productinventoryservice.dto.UpdateProductStatusRequest;
 import com.millenniumitesp.productinventoryservice.dto.UpdateStockPriceRequest;
 import com.millenniumitesp.productinventoryservice.service.ProductService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -22,9 +23,11 @@ import java.net.URI;
 public class ProductController implements ProductApi {
 
     private final ProductService productService;
+    private final PaginationProperties paginationProperties;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, PaginationProperties paginationProperties) {
         this.productService = productService;
+        this.paginationProperties = paginationProperties;
     }
 
     @Override
@@ -36,10 +39,12 @@ public class ProductController implements ProductApi {
 
     @Override
     @GetMapping
-    public ResponseEntity<Page<ProductResponse>> getAllProducts(
-            @PageableDefault(size = 20, sort = "id") Pageable pageable
-    ) {
-        Page<ProductResponse> products = productService.getAll(pageable);
+    public ResponseEntity<Page<ProductResponse>> getAllProducts(Pageable pageable) {
+        Pageable effectivePageable = pageable.getPageSize() == 20 && pageable.getSort().isUnsorted()
+                ? PageRequest.of(pageable.getPageNumber(), paginationProperties.getDefaultSize())
+                : pageable;
+
+        Page<ProductResponse> products = productService.getAll(effectivePageable);
         return ResponseEntity.ok(products);
     }
 

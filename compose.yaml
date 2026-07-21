@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -28,6 +28,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       STOCK_MIN_LIMIT: ${STOCK_MIN_LIMIT}
       STOCK_MAX_LIMIT: ${STOCK_MAX_LIMIT}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-dev}
     ports:
       - "8080:8080"
     volumes:
