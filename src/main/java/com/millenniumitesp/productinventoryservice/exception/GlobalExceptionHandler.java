@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // Stays separate: overrides a specific parent method with its own
-    // required signature, not a freeform @ExceptionHandler.
+    // required signature, not a Freeform @ExceptionHandler.
     @Override
     protected @Nullable ResponseEntity<Object> handleMethodArgumentNotValid(
             @NonNull MethodArgumentNotValidException ex,
@@ -92,6 +92,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             case ConstraintViolationException e -> {
                 log.warn("Constraint violation: {}", e.getMessage());
                 yield buildProblem(HttpStatus.BAD_REQUEST, "Invalid Request", e.getMessage());
+            }
+            case AuthExceptions.InvalidCredentials e -> {
+                log.warn("Failed login attempt");
+                yield buildProblem(HttpStatus.UNAUTHORIZED, "Authentication Failed", e.getMessage());
+            }
+            case AuthExceptions.UserNotFound e -> {
+                log.warn(e.getMessage());
+                yield buildProblem(HttpStatus.NOT_FOUND, "User Not Found", e.getMessage());
+            }
+            case AuthExceptions.UsernameAlreadyExists e -> {
+                log.warn(e.getMessage());
+                yield buildProblem(HttpStatus.CONFLICT, "Username Taken", e.getMessage());
             }
             default -> {
                 log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
