@@ -1,6 +1,11 @@
 spring:
   application:
     name: product-inventory-service
+
+  jackson:
+    deserialization:
+      accept-float-as-int: false
+
   docker:
     compose:
       enabled: false
