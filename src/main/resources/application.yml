@@ -17,10 +17,6 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
-
-  jwt:
-    secret: ${JWT_SECRET}
-
   jpa:
     hibernate:
       ddl-auto: update
@@ -28,6 +24,12 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+jwt:
+  secret: ${JWT_SECRET}
+
+admin:
+  bootstrap-password: ${ADMIN_BOOTSTRAP_PASSWORD}
 
 inventory:
   stock:
