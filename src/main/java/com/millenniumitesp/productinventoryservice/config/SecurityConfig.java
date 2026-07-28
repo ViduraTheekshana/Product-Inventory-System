@@ -1,5 +1,6 @@
 package com.millenniumitesp.productinventoryservice.config;
 
+import com.millenniumitesp.productinventoryservice.enums.Role;
 import com.millenniumitesp.productinventoryservice.security.JwtAccessDeniedHandler;
 import com.millenniumitesp.productinventoryservice.security.JwtAuthFilter;
 import com.millenniumitesp.productinventoryservice.security.JwtAuthenticationEntryPoint;
@@ -16,6 +17,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 public class SecurityConfig {
+
+    private static final String PRODUCTS_PATH = "/api/v1/products/**";
 
     private final JwtAuthFilter jwtAuthFilter;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
@@ -34,9 +37,13 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    @SuppressWarnings("java:S112") // HttpSecurity.build() throws checked Exception - standard Spring Security signature
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // CSRF is unnecessary here: this API is stateless JWT-based
+                // (Authorization header, not cookies), so there's no browser
+                // session for a malicious site to forge a request against.
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex
@@ -47,12 +54,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasAnyRole("MANAGER", "ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/products/**").hasAnyRole("MANAGER", "ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasAnyRole("MANAGER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, PRODUCTS_PATH).authenticated()
+                        .requestMatchers(HttpMethod.POST, PRODUCTS_PATH).hasAnyRole(Role.MANAGER.name(), Role.ADMIN.name())
+                        .requestMatchers(HttpMethod.PATCH, PRODUCTS_PATH).hasAnyRole(Role.MANAGER.name(), Role.ADMIN.name())
+                        .requestMatchers(HttpMethod.DELETE, PRODUCTS_PATH).hasAnyRole(Role.MANAGER.name(), Role.ADMIN.name())
 
-                        .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/users/**").hasRole(Role.ADMIN.name())
 
                         .anyRequest().authenticated()
                 )

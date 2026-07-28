@@ -6,7 +6,6 @@ import com.millenniumitesp.productinventoryservice.dto.ProductResponse;
 import com.millenniumitesp.productinventoryservice.dto.UpdateProductStatusRequest;
 import com.millenniumitesp.productinventoryservice.dto.UpdateStockPriceRequest;
 import com.millenniumitesp.productinventoryservice.service.ProductService;
-import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -51,7 +50,7 @@ public class ProductController implements ProductApi {
 
     @Override
     @PostMapping
-    public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody CreateProductRequest request) {
+    public ResponseEntity<ProductResponse> createProduct(@RequestBody CreateProductRequest request) {
         ProductResponse product = productService.create(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequestUri()
                 .path("/{id}")

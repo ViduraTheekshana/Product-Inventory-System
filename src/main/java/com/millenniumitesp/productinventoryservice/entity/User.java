@@ -1,6 +1,7 @@
 package com.millenniumitesp.productinventoryservice.entity;
 
 import com.millenniumitesp.productinventoryservice.enums.Role;
+import com.millenniumitesp.productinventoryservice.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.UUID;
@@ -27,4 +28,8 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserStatus status;
 }
