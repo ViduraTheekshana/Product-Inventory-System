@@ -15,6 +15,17 @@ services:
       timeout: 5s
       retries: 10
 
+  nginx:
+    image: nginx:alpine
+    depends_on:
+      - app
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/selfsigned.crt:/etc/nginx/certs/selfsigned.crt:ro
+      - ./nginx/selfsigned.key:/etc/nginx/certs/selfsigned.key:ro
+
   app:
     build: .
     depends_on:
@@ -31,8 +42,8 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-dev}
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD}
-    ports:
-      - "8080:8080"
+#    ports:
+#      - "8080:8080"
     volumes:
       - app_logs:/app/logs
 

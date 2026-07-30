@@ -52,7 +52,12 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml"
+                        ).permitAll()
 
                         .requestMatchers(HttpMethod.GET, PRODUCTS_PATH).authenticated()
                         .requestMatchers(HttpMethod.POST, PRODUCTS_PATH).hasAnyRole(Role.MANAGER.name(), Role.ADMIN.name())

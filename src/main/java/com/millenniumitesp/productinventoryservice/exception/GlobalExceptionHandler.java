@@ -105,6 +105,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 log.warn(e.getMessage());
                 yield buildProblem(HttpStatus.CONFLICT, "Username Taken", e.getMessage());
             }
+            case AuthExceptions.InvalidRefreshToken e -> {
+                log.warn(e.getMessage());
+                yield buildProblem(HttpStatus.UNAUTHORIZED, "Invalid Refresh Token", e.getMessage());
+            }
+            case AuthExceptions.TokenReuseDetected e -> {
+                log.warn("Token reuse detected - possible account compromise");
+                yield buildProblem(HttpStatus.UNAUTHORIZED, "Session Revoked", e.getMessage());
+            }
             default -> {
                 log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
                 yield buildProblem(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected error occurred.");
