@@ -2,7 +2,6 @@ package com.millenniumitesp.productinventoryservice.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -19,8 +18,8 @@ public class RefreshToken {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 512)
-    private String token;
+    @Column(nullable = false, unique = true, length = 64)
+    private String jti;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;

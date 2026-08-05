@@ -27,6 +27,7 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
+  refresh-secret: ${JWT_REFRESH_SECRET}
 
 admin:
   bootstrap-password: ${ADMIN_BOOTSTRAP_PASSWORD}

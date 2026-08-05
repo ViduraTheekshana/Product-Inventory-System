@@ -2,6 +2,7 @@ package com.millenniumitesp.productinventoryservice.config;
 
 import com.millenniumitesp.productinventoryservice.entity.User;
 import com.millenniumitesp.productinventoryservice.enums.Role;
+import com.millenniumitesp.productinventoryservice.enums.UserStatus;
 import com.millenniumitesp.productinventoryservice.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +35,7 @@ public class AdminSeeder implements CommandLineRunner {
                     .username("admin")
                     .password(passwordEncoder.encode(bootstrapPassword))
                     .role(Role.ADMIN)
+                    .status(UserStatus.ACTIVE)
                     .build();
 
             userRepository.save(admin);
