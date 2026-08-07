@@ -54,7 +54,7 @@ public class ProductService {
      */
     @Transactional
     public ProductResponse create(CreateProductRequest request) {
-        if (productRepository.existsBySkuAndStatusNot(request.sku(), ProductStatus.DELETED)) {
+        if (productRepository.existsBySku(request.sku())) {
             throw new ProductExceptions.DuplicateSku(request.sku());
         }
         validateStockWithinLimits(request.stockQuantity());

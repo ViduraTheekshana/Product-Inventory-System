@@ -13,8 +13,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 
 @Tag(name = "Users", description = "User management - ADMIN only")
@@ -28,10 +28,9 @@ public interface UserApi {
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     UserResponse createUser(@Valid @RequestBody CreateUserRequest request);
 
-    @Operation(summary = "List all users",
-            description = "Restricted to ADMIN.")
-    @ApiResponse(responseCode = "200", description = "List of all users")
-    List<UserResponse> getAllUsers();
+    @Operation(summary = "List all users", description = "Excludes deleted users. Restricted to ADMIN.")
+    @ApiResponse(responseCode = "200", description = "A page of users")
+    Page<UserResponse> getAllUsers(Pageable pageable);
 
     @Operation(summary = "Assign a role to an existing user",
             description = "Changes a user's role. Restricted to ADMIN.")

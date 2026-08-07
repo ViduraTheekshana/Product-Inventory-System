@@ -1,14 +1,17 @@
 package com.millenniumitesp.productinventoryservice.controller;
 
+import com.millenniumitesp.productinventoryservice.config.PaginationProperties;
 import com.millenniumitesp.productinventoryservice.dto.AssignRoleRequest;
 import com.millenniumitesp.productinventoryservice.dto.CreateUserRequest;
 import com.millenniumitesp.productinventoryservice.dto.UserResponse;
 import com.millenniumitesp.productinventoryservice.service.UserService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -16,9 +19,11 @@ import java.util.UUID;
 public class UserController implements UserApi {
 
     private final UserService userService;
+    private final PaginationProperties paginationProperties;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, PaginationProperties paginationProperties) {
         this.userService = userService;
+        this.paginationProperties = paginationProperties;
     }
 
     @Override
@@ -30,8 +35,16 @@ public class UserController implements UserApi {
 
     @Override
     @GetMapping
-    public List<UserResponse> getAllUsers() {
-        return userService.getAllUsers();
+    public Page<UserResponse> getAllUsers(Pageable pageable) {
+        // Same exact pattern as ProductController: if the caller never
+        // specified ?size=, Spring's own default of 20 is what we're
+        // seeing here - swap it for our configured, environment-specific
+        // default instead.
+        Pageable effectivePageable = pageable.getPageSize() == 20 && pageable.getSort().isUnsorted()
+                ? PageRequest.of(pageable.getPageNumber(), paginationProperties.getDefaultSize())
+                : pageable;
+
+        return userService.getAllUsers(effectivePageable);
     }
 
     @Override

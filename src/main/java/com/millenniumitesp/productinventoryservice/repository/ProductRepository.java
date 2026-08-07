@@ -10,7 +10,9 @@ import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    boolean existsBySkuAndStatusNot(String sku, ProductStatus excludedStatus);
+    // Checks ALL rows, including DELETED - a SKU is now permanently
+    // reserved once used, even after the product is deleted.
+    boolean existsBySku(String sku);
 
     Optional<Product> findByIdAndStatusNot(Long id, ProductStatus excludedStatus);
 
