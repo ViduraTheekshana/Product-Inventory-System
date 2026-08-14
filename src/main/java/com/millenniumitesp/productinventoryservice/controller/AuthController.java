@@ -4,11 +4,15 @@ import com.millenniumitesp.productinventoryservice.dto.LoginRequest;
 import com.millenniumitesp.productinventoryservice.dto.LoginResponse;
 import com.millenniumitesp.productinventoryservice.dto.LogoutRequest;
 import com.millenniumitesp.productinventoryservice.dto.RefreshRequest;
+import com.millenniumitesp.productinventoryservice.exception.AuthExceptions;
 import com.millenniumitesp.productinventoryservice.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -43,7 +47,10 @@ public class AuthController implements AuthApi {
     @PostMapping("/logout-all")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logoutAll() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        String username = Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .map(Authentication::getName)
+                .orElseThrow(AuthExceptions.InvalidCredentials::new);
+
         authService.logoutAllSessions(username);
     }
 }
